@@ -10,12 +10,29 @@
 
   Run from an elevated (Administrator) PowerShell to also check TPM, Secure Boot,
   CPU/ACPI temperature and SSD wear. Nothing on the system is changed.
+
+  Linux: run  python3 PC-Audit.py  (keep it in the same folder as this file).
+  If you start this .ps1 with PowerShell 7 (pwsh) on Linux/macOS, it hands off to
+  PC-Audit.py automatically. Both write the same HTML/JSON report format.
 #>
 [CmdletBinding()]
 param(
-    [string]$OutDir = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PC-Audit'),
+    [string]$OutDir,
     [switch]$NoOpen
 )
+
+# ---------------------------------------------------------------- non-Windows hand-off
+# $IsWindows only exists in PowerShell 6+; Windows PowerShell 5.1 is always Windows.
+if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) {
+    $py = Join-Path $PSScriptRoot 'PC-Audit.py'
+    if (-not (Test-Path $py)) { Write-Error "PC-Audit.py not found next to this script - it runs the Linux checks."; exit 1 }
+    $pyArgs = @($py)
+    if ($OutDir) { $pyArgs += @('--out-dir', $OutDir) }
+    if ($NoOpen) { $pyArgs += '--no-open' }
+    & python3 @pyArgs
+    exit $LASTEXITCODE
+}
+if (-not $OutDir) { $OutDir = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PC-Audit' }
 
 $ErrorActionPreference = 'Continue'
 $started = Get-Date
